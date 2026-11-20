@@ -14,6 +14,12 @@ edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/monoguitari/PodBridge"
 
+[workspace.dependencies]
+aes = "0.8"
+hmac = "0.12"
+sha1 = "0.10"
+thiserror = "2.0"
+
 [workspace.lints.rust]
 unexpected_cfgs = "warn"
 
