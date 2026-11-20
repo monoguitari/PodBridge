@@ -228,7 +228,7 @@ export function Sidebar({
         </button>
       </div>
 
-      <div className="nav-section" style={{ flex: 1 }}>
+      <div className="nav-section nav-section-playlists">
         <div className="nav-section-header">
           <span>Playlists</span>
           {activeDevice && (
@@ -243,58 +243,63 @@ export function Sidebar({
           )}
         </div>
 
-        {playlists.length === 0 ? (
-          <div
-            style={{
-              padding: "6px 10px",
-              fontSize: 11.5,
-              color: "var(--text-muted)",
-            }}
-          >
-            No custom playlists yet
-          </div>
-        ) : (
-          playlists.map((pl) => {
-            const isActive =
-              activeView.kind === "playlist" &&
-              activeView.persistentIdHex === pl.persistent_id_hex;
-            return (
-              <button
-                key={pl.persistent_id_hex}
-                type="button"
-                className={`nav-item ${isActive ? "active" : ""}`}
-                onClick={() =>
-                  onChangeView({
-                    kind: "playlist",
-                    persistentIdHex: pl.persistent_id_hex,
-                  })
-                }
-                onDragOver={(e) => {
-                  if (hasDraggedSelection) {
-                    e.preventDefault();
+        <div className="sidebar-playlists-scroll">
+          {playlists.length === 0 ? (
+            <div
+              style={{
+                padding: "6px 10px",
+                fontSize: 11.5,
+                color: "var(--text-muted)",
+              }}
+            >
+              No custom playlists yet
+            </div>
+          ) : (
+            playlists.map((pl) => {
+              const isActive =
+                activeView.kind === "playlist" &&
+                activeView.persistentIdHex === pl.persistent_id_hex;
+              return (
+                <button
+                  key={pl.persistent_id_hex}
+                  type="button"
+                  className={`nav-item ${isActive ? "active" : ""}`}
+                  onClick={() =>
+                    onChangeView({
+                      kind: "playlist",
+                      persistentIdHex: pl.persistent_id_hex,
+                    })
                   }
-                }}
-                onDrop={(e) => {
-                  if (hasDraggedSelection) {
-                    e.preventDefault();
-                    onDropTracksOnPlaylist(pl.persistent_id_hex);
-                  }
-                }}
-              >
-                <span className="nav-item-left">
-                  <ListMusic size={15} />
-                  <span className="nav-item-label">{pl.name}</span>
-                </span>
-                <span className="nav-count tabular">{pl.track_ids.length}</span>
-              </button>
-            );
-          })
-        )}
+                  onDragOver={(e) => {
+                    if (hasDraggedSelection) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (hasDraggedSelection) {
+                      e.preventDefault();
+                      onDropTracksOnPlaylist(pl.persistent_id_hex);
+                    }
+                  }}
+                >
+                  <span className="nav-item-left">
+                    <ListMusic size={15} />
+                    <span className="nav-item-label">{pl.name}</span>
+                  </span>
+                  <span className="nav-count tabular">
+                    {pl.track_ids.length}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
       </div>
 
       <div
         style={{
           display: "flex",
+          flexShrink: 0,
           alignItems: "center",
           justifyContent: "space-between",
           paddingTop: 8,

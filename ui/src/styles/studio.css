@@ -86,23 +86,32 @@ select {
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(128, 138, 158, 0.06);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
+  background: rgba(148, 163, 184, 0.3);
   border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.52);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 /* App Shell */
 .app-shell {
   display: grid;
-  grid-template-columns: 268px 1fr;
-  width: 100%;
-  height: 100%;
+  grid-template-columns: 268px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
   position: relative;
 }
 
@@ -112,13 +121,16 @@ select {
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  height: 100%;
   padding: 14px 12px;
   gap: 14px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .brand-row {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   padding: 2px 4px;
@@ -148,6 +160,7 @@ select {
   border-radius: 11px;
   padding: 12px;
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 10px;
 }
@@ -215,6 +228,24 @@ select {
 
 /* Navigation Sections */
 .nav-section {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-section-playlists {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebar-playlists-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -344,12 +375,15 @@ select {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   height: 100%;
+  overflow: hidden;
   background: var(--bg-canvas);
 }
 
 .topbar {
   height: 54px;
+  flex-shrink: 0;
   border-bottom: 1px solid var(--border-subtle);
   padding: 0 18px;
   display: flex;
@@ -396,8 +430,10 @@ select {
 }
 
 .content-viewport {
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -423,13 +459,17 @@ select {
 .songs-view {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
+  min-width: 0;
   width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .selection-bar {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   padding: 7px 18px;
@@ -437,12 +477,31 @@ select {
   border-bottom: 1px solid var(--border-strong);
 }
 
+.table-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  position: relative;
+}
+
+.table-inner {
+  min-width: 680px;
+  width: 100%;
+}
+
 .table-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: grid;
-  grid-template-columns: minmax(210px, 2.2fr) minmax(140px, 1.4fr) minmax(140px, 1.5fr) 70px 68px 84px 58px;
+  flex-shrink: 0;
+  grid-template-columns: minmax(170px, 2.2fr) minmax(115px, 1.4fr) minmax(115px, 1.5fr) 62px 62px 76px 52px;
   align-items: center;
   height: 34px;
-  padding: 0 18px;
+  padding: 0 14px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   font-size: 11px;
@@ -475,22 +534,15 @@ select {
   text-align: right;
 }
 
-.table-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  position: relative;
-}
-
 .tr-row {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(210px, 2.2fr) minmax(140px, 1.4fr) minmax(140px, 1.5fr) 70px 68px 84px 58px;
+  grid-template-columns: minmax(170px, 2.2fr) minmax(115px, 1.4fr) minmax(115px, 1.5fr) 62px 62px 76px 52px;
   align-items: center;
-  padding: 0 18px;
+  padding: 0 14px;
   border-bottom: 1px solid var(--border-subtle);
   cursor: default;
 }
@@ -544,6 +596,9 @@ select {
   top: calc(100% + 4px);
   right: 0;
   min-width: 190px;
+  max-height: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 50;
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
@@ -577,9 +632,12 @@ select {
 
 /* Albums Grid */
 .albums-scroll {
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
+  height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 20px;
 }
 
@@ -628,6 +686,7 @@ select {
 
 .album-hero {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 16px;
   padding: 14px 18px;
@@ -638,19 +697,37 @@ select {
 /* Artists Master-Detail */
 .artists-split {
   display: flex;
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .artists-list {
   width: 248px;
+  flex-shrink: 0;
+  min-height: 0;
+  height: 100%;
   border-right: 1px solid var(--border-subtle);
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 3px;
   background: var(--bg-surface);
+}
+
+.artists-detail {
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
 }
 
 .artist-row {
@@ -712,6 +789,7 @@ select {
 
 /* Bottom Transfer Queue Drawer */
 .transfer-drawer {
+  flex-shrink: 0;
   border-top: 1px solid var(--border-strong);
   background: var(--bg-sidebar);
   display: flex;

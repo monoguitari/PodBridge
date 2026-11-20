@@ -89,7 +89,7 @@ export function ArtistsView({
         })}
       </div>
 
-      <div style={{ flex: 1, minWidth: 0, display: "flex", minHeight: 0 }}>
+      <div className="artists-detail">
         <SongsTable
           deviceId={deviceId}
           tracks={artistTracks}

@@ -204,136 +204,146 @@ export function SongsTable({
         </div>
       )}
 
-      <div className="table-header">
-        <button
-          type="button"
-          className="th-cell th-title"
-          onClick={() => handleSortClick("title")}
-        >
-          <span>Title</span>
-          {renderSortIcon("title")}
-        </button>
-        <button
-          type="button"
-          className="th-cell th-artist"
-          onClick={() => handleSortClick("artist")}
-        >
-          <span>Artist</span>
-          {renderSortIcon("artist")}
-        </button>
-        <button
-          type="button"
-          className="th-cell th-album"
-          onClick={() => handleSortClick("album")}
-        >
-          <span>Album</span>
-          {renderSortIcon("album")}
-        </button>
-        <button
-          type="button"
-          className="th-cell th-num"
-          onClick={() => handleSortClick("length_ms")}
-        >
-          <span>Time</span>
-          {renderSortIcon("length_ms")}
-        </button>
-        <button
-          type="button"
-          className="th-cell th-fmt"
-          onClick={() => handleSortClick("format_badge")}
-        >
-          <span>Codec</span>
-          {renderSortIcon("format_badge")}
-        </button>
-        <button
-          type="button"
-          className="th-cell th-num"
-          onClick={() => handleSortClick("size_bytes")}
-        >
-          <span>Size</span>
-          {renderSortIcon("size_bytes")}
-        </button>
-        <button
-          type="button"
-          className="th-cell th-plays"
-          onClick={() => handleSortClick("play_count")}
-        >
-          <span>Plays</span>
-          {renderSortIcon("play_count")}
-        </button>
-      </div>
-
       <div ref={parentRef} className="table-scroll">
-        {visibleTracks.length === 0 ? (
-          <div className="empty-state">
-            {tracks.length === 0
-              ? "No songs on this iPod yet — drag audio files, folders, or .m3u8 playlists anywhere onto the window."
-              : `No tracks matching "${searchQuery}".`}
+        <div className="table-inner">
+          <div className="table-header">
+            <button
+              type="button"
+              className="th-cell th-title"
+              onClick={() => handleSortClick("title")}
+            >
+              <span>Title</span>
+              {renderSortIcon("title")}
+            </button>
+            <button
+              type="button"
+              className="th-cell th-artist"
+              onClick={() => handleSortClick("artist")}
+            >
+              <span>Artist</span>
+              {renderSortIcon("artist")}
+            </button>
+            <button
+              type="button"
+              className="th-cell th-album"
+              onClick={() => handleSortClick("album")}
+            >
+              <span>Album</span>
+              {renderSortIcon("album")}
+            </button>
+            <button
+              type="button"
+              className="th-cell th-num"
+              onClick={() => handleSortClick("length_ms")}
+            >
+              <span>Time</span>
+              {renderSortIcon("length_ms")}
+            </button>
+            <button
+              type="button"
+              className="th-cell th-fmt"
+              onClick={() => handleSortClick("format_badge")}
+            >
+              <span>Codec</span>
+              {renderSortIcon("format_badge")}
+            </button>
+            <button
+              type="button"
+              className="th-cell th-num"
+              onClick={() => handleSortClick("size_bytes")}
+            >
+              <span>Size</span>
+              {renderSortIcon("size_bytes")}
+            </button>
+            <button
+              type="button"
+              className="th-cell th-plays"
+              onClick={() => handleSortClick("play_count")}
+            >
+              <span>Plays</span>
+              {renderSortIcon("play_count")}
+            </button>
           </div>
-        ) : (
-          <div
-            style={{
-              height: `${rowVirtualizer.getTotalSize()}px`,
-              width: "100%",
-              position: "relative",
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const track = visibleTracks[virtualRow.index];
-              const isSelected = selectedIds.has(track.track_id);
-              return (
-                <div
-                  key={track.track_id}
-                  className={`tr-row ${isSelected ? "selected" : ""}`}
-                  style={{
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                  draggable
-                  onDragStart={() => {
-                    const ids = isSelected ? selectedArray : [track.track_id];
-                    onDragSelectionChange?.(ids);
-                  }}
-                  onDragEnd={() => onDragSelectionChange?.([])}
-                  onClick={(e) =>
-                    handleRowClick(e, virtualRow.index, track.track_id)
-                  }
-                >
-                  <div className="td-cell th-title">
-                    <ArtworkThumb
-                      deviceId={deviceId}
-                      mhiiLink={track.mhii_link}
-                      seedText={`${track.artist}-${track.album}`}
-                      sizePx={26}
-                      borderRadius={5}
-                    />
-                    <span className="truncate-text" title={track.title}>
-                      {track.title}
-                    </span>
+
+          {visibleTracks.length === 0 ? (
+            <div className="empty-state">
+              {tracks.length === 0
+                ? "No songs on this iPod yet — drag audio files, folders, or .m3u8 playlists anywhere onto the window."
+                : `No tracks matching "${searchQuery}".`}
+            </div>
+          ) : (
+            <div
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const track = visibleTracks[virtualRow.index];
+                const isSelected = selectedIds.has(track.track_id);
+                return (
+                  <div
+                    key={track.track_id}
+                    className={`tr-row ${isSelected ? "selected" : ""}`}
+                    style={{
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                    draggable
+                    onDragStart={(e) => {
+                      const ids = isSelected ? selectedArray : [track.track_id];
+                      e.dataTransfer.effectAllowed = "copy";
+                      e.dataTransfer.setData("text/plain", ids.join(","));
+                      onDragSelectionChange?.(ids);
+                    }}
+                    onDragEnd={() => onDragSelectionChange?.([])}
+                    onClick={(e) =>
+                      handleRowClick(e, virtualRow.index, track.track_id)
+                    }
+                  >
+                    <div className="td-cell th-title">
+                      <ArtworkThumb
+                        deviceId={deviceId}
+                        mhiiLink={track.mhii_link}
+                        seedText={`${track.artist}-${track.album}`}
+                        sizePx={26}
+                        borderRadius={5}
+                      />
+                      <span className="truncate-text" title={track.title}>
+                        {track.title}
+                      </span>
+                    </div>
+                    <div
+                      className="td-cell th-artist truncate-text"
+                      title={track.artist}
+                    >
+                      {track.artist}
+                    </div>
+                    <div
+                      className="td-cell th-album truncate-text"
+                      title={track.album}
+                    >
+                      {track.album}
+                    </div>
+                    <div className="td-cell th-num tabular">
+                      {formatDurationMs(track.length_ms)}
+                    </div>
+                    <div className="td-cell th-fmt">
+                      <span className="codec-chip">{track.format_badge}</span>
+                    </div>
+                    <div className="td-cell th-num tabular">
+                      {formatBytes(track.size_bytes)}
+                    </div>
+                    <div className="td-cell th-plays tabular">
+                      {track.play_count}
+                    </div>
                   </div>
-                  <div className="td-cell th-artist truncate-text" title={track.artist}>
-                    {track.artist}
-                  </div>
-                  <div className="td-cell th-album truncate-text" title={track.album}>
-                    {track.album}
-                  </div>
-                  <div className="td-cell th-num tabular">
-                    {formatDurationMs(track.length_ms)}
-                  </div>
-                  <div className="td-cell th-fmt">
-                    <span className="codec-chip">{track.format_badge}</span>
-                  </div>
-                  <div className="td-cell th-num tabular">
-                    {formatBytes(track.size_bytes)}
-                  </div>
-                  <div className="td-cell th-plays tabular">
-                    {track.play_count}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -27,87 +27,142 @@ let demoSettings: AppSettings = {
   },
 };
 
-const demoTracks: TrackDto[] = [
-  {
-    track_id: 3415,
-    dbid_hex: "0000000000000D57",
-    title: "NUEVAYoL",
-    artist: "Bad Bunny",
-    album_artist: "Bad Bunny",
-    album: "DeBÍ TiRAR MáS FOToS",
-    genre: "Urbano",
-    format_badge: "ALAC",
-    size_bytes: 24_812_544,
-    length_ms: 183_600,
-    bitrate_kbps: 1081,
-    sample_rate_hz: 48000,
-    track_nr: 1,
-    disc_nr: 1,
-    year: 2025,
-    play_count: 14,
-    rating: 100,
-    mhii_link: 100,
-  },
-  {
-    track_id: 3416,
-    dbid_hex: "0000000000000D58",
-    title: "Digital Love",
-    artist: "Daft Punk",
-    album_artist: "Daft Punk",
-    album: "Discovery",
-    genre: "Electronic",
-    format_badge: "AAC",
-    size_bytes: 9_842_110,
-    length_ms: 301_200,
-    bitrate_kbps: 256,
-    sample_rate_hz: 44100,
-    track_nr: 3,
-    disc_nr: 1,
-    year: 2001,
-    play_count: 42,
-    rating: 100,
-    mhii_link: 101,
-  },
-  {
-    track_id: 3417,
-    dbid_hex: "0000000000000D59",
-    title: "Veridis Quo",
-    artist: "Daft Punk",
-    album_artist: "Daft Punk",
-    album: "Discovery",
-    genre: "Electronic",
-    format_badge: "ALAC",
-    size_bytes: 31_420_900,
-    length_ms: 345_100,
-    bitrate_kbps: 728,
-    sample_rate_hz: 44100,
-    track_nr: 11,
-    disc_nr: 1,
-    year: 2001,
-    play_count: 19,
-    rating: 80,
-    mhii_link: 101,
-  },
+const DEMO_CATALOG: Array<{
+  artist: string;
+  album: string;
+  genre: string;
+  year: number;
+  codec: string;
+}> = [
+  { artist: "Bad Bunny", album: "DeBÍ TiRAR MáS FOToS", genre: "Urbano", year: 2025, codec: "ALAC" },
+  { artist: "Daft Punk", album: "Discovery", genre: "Electronic", year: 2001, codec: "ALAC" },
+  { artist: "Daft Punk", album: "Random Access Memories", genre: "Electronic", year: 2013, codec: "ALAC" },
+  { artist: "Radiohead", album: "In Rainbows", genre: "Alternative", year: 2007, codec: "ALAC" },
+  { artist: "Radiohead", album: "OK Computer", genre: "Alternative", year: 1997, codec: "AAC" },
+  { artist: "Kendrick Lamar", album: "good kid, m.A.A.d city", genre: "Hip-Hop", year: 2012, codec: "ALAC" },
+  { artist: "Frank Ocean", album: "Blonde", genre: "R&B", year: 2016, codec: "AAC" },
+  { artist: "Sade", album: "Love Deluxe", genre: "Soul", year: 1992, codec: "ALAC" },
+  { artist: "Tame Impala", album: "Currents", genre: "Indie", year: 2015, codec: "ALAC" },
+  { artist: "Justice", album: "Cross", genre: "Electronic", year: 2007, codec: "AAC" },
+  { artist: "Aphex Twin", album: "Selected Ambient Works 85-92", genre: "Ambient", year: 1992, codec: "ALAC" },
+  { artist: "Boards of Canada", album: "Music Has the Right to Children", genre: "IDM", year: 1998, codec: "ALAC" },
+  { artist: "Rosalía", album: "MOTOMAMI", genre: "Pop", year: 2022, codec: "AAC" },
+  { artist: "The Strokes", album: "Is This It", genre: "Rock", year: 2001, codec: "MP3" },
+  { artist: "Portishead", album: "Dummy", genre: "Trip-Hop", year: 1994, codec: "ALAC" },
+  { artist: "Massive Attack", album: "Mezzanine", genre: "Trip-Hop", year: 1998, codec: "ALAC" },
+  { artist: "Nujabes", album: "Modal Soul", genre: "Jazz Hop", year: 2005, codec: "MP3" },
+  { artist: "J Dilla", album: "Donuts", genre: "Hip-Hop", year: 2006, codec: "ALAC" },
+  { artist: "MF DOOM", album: "MM..FOOD", genre: "Hip-Hop", year: 2004, codec: "AAC" },
+  { artist: "Björk", album: "Homogenic", genre: "Art Pop", year: 1997, codec: "ALAC" },
+  { artist: "Gustavo Cerati", album: "Bocanada", genre: "Rock", year: 1999, codec: "ALAC" },
+  { artist: "Soda Stereo", album: "Dynamo", genre: "Shoegaze", year: 1992, codec: "ALAC" },
+  { artist: "Charli xcx", album: "BRAT", genre: "Club", year: 2024, codec: "AAC" },
+  { artist: "Khruangbin", album: "Con Todo El Mundo", genre: "Funk", year: 2018, codec: "ALAC" },
 ];
 
-let demoSnapshot: LibrarySnapshot = buildDemoSnapshot(demoTracks, [
-  {
-    persistent_id_hex: "13B5DBB7775862A2",
-    name: "Late Night Classic",
+const demoTracks: TrackDto[] = DEMO_CATALOG.flatMap((entry, albumIdx) =>
+  Array.from({ length: 18 }, (_, idx) => {
+    const trackNr = idx + 1;
+    const trackId = 3400 + albumIdx * 18 + trackNr;
+    return {
+      track_id: trackId,
+      dbid_hex: trackId.toString(16).toUpperCase().padStart(16, "0"),
+      title: `${entry.album} — Track ${String(trackNr).padStart(2, "0")}`,
+      artist: entry.artist,
+      album_artist: entry.artist,
+      album: entry.album,
+      genre: entry.genre,
+      format_badge: entry.codec,
+      size_bytes: entry.codec === "ALAC" ? 26_400_000 + idx * 910_000 : 8_900_000 + idx * 320_000,
+      length_ms: 175_000 + ((albumIdx * 19 + idx * 29) % 160) * 1000,
+      bitrate_kbps: entry.codec === "ALAC" ? 960 : 256,
+      sample_rate_hz: 44100,
+      track_nr: trackNr,
+      disc_nr: 1,
+      year: entry.year,
+      play_count: (albumIdx * 7 + trackNr * 3) % 48,
+      rating: 80,
+      mhii_link: 100 + albumIdx,
+    };
+  }),
+);
+
+let demoSnapshot: LibrarySnapshot = buildDemoSnapshot(
+  demoTracks,
+  Array.from({ length: 14 }, (_, i) => ({
+    persistent_id_hex: (0x13b5dbb7775862a0 + i).toString(16).toUpperCase(),
+    name:
+      i === 0
+        ? "Late Night Classic"
+        : i === 1
+          ? "Roadtrip Lossless"
+          : `Studio Mix Vol. ${i + 1}`,
     is_master: false,
-    track_ids: [3416, 3417],
-  },
-]);
+    track_ids: demoTracks.slice(i * 4, i * 4 + 36).map((t) => t.track_id),
+  })),
+);
 
 function buildDemoSnapshot(
   tracks: TrackDto[],
   playlists: LibrarySnapshot["playlists"],
 ): LibrarySnapshot {
-  const musicBytes = tracks.reduce((acc, t) => acc + t.size_bytes, 0) + 34_800_000_000;
+  const musicBytes =
+    tracks.reduce((acc, t) => acc + t.size_bytes, 0) + 29_400_000_000;
   const totalBytes = 137_169_977_344;
   const artBytes = 17_360_000;
   const otherBytes = 138_000_000;
   const freeBytes = Math.max(0, totalBytes - musicBytes - artBytes - otherBytes);
+
+  const albumMap = new Map<string, LibrarySnapshot["albums"][number]>();
+  const artistAlbums = new Map<string, Set<string>>();
+  const artistCounts = new Map<string, { tracks: number; mhii: number }>();
+
+  for (const t of tracks) {
+    const key = `${t.album_artist.toLowerCase()}::${t.album.toLowerCase()}`;
+    const existing = albumMap.get(key);
+    if (existing) {
+      existing.track_count += 1;
+      existing.total_length_ms += t.length_ms;
+      existing.track_ids.push(t.track_id);
+    } else {
+      albumMap.set(key, {
+        key,
+        title: t.album,
+        artist: t.album_artist,
+        year: t.year,
+        track_count: 1,
+        total_length_ms: t.length_ms,
+        mhii_link: t.mhii_link,
+        track_ids: [t.track_id],
+      });
+    }
+
+    let aSet = artistAlbums.get(t.artist);
+    if (!aSet) {
+      aSet = new Set();
+      artistAlbums.set(t.artist, aSet);
+    }
+    aSet.add(t.album.toLowerCase());
+
+    const ac = artistCounts.get(t.artist);
+    if (ac) {
+      ac.tracks += 1;
+    } else {
+      artistCounts.set(t.artist, { tracks: 1, mhii: t.mhii_link });
+    }
+  }
+
+  const albums = Array.from(albumMap.values()).sort((a, b) =>
+    a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title),
+  );
+  const artists = Array.from(artistCounts.entries())
+    .map(([name, info]) => ({
+      name,
+      album_count: artistAlbums.get(name)?.size ?? 1,
+      track_count: info.tracks,
+      mhii_link: info.mhii,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return {
     device: {
@@ -130,32 +185,8 @@ function buildDemoSnapshot(
       },
     },
     tracks,
-    albums: [
-      {
-        key: "bad bunny::debí tirar más fotos",
-        title: "DeBÍ TiRAR MáS FOToS",
-        artist: "Bad Bunny",
-        year: 2025,
-        track_count: 1,
-        total_length_ms: 183_600,
-        mhii_link: 100,
-        track_ids: [3415],
-      },
-      {
-        key: "daft punk::discovery",
-        title: "Discovery",
-        artist: "Daft Punk",
-        year: 2001,
-        track_count: 2,
-        total_length_ms: 646_300,
-        mhii_link: 101,
-        track_ids: [3416, 3417],
-      },
-    ],
-    artists: [
-      { name: "Bad Bunny", album_count: 1, track_count: 1, mhii_link: 100 },
-      { name: "Daft Punk", album_count: 1, track_count: 2, mhii_link: 101 },
-    ],
+    albums,
+    artists,
     playlists,
   };
 }
