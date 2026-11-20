@@ -6,13 +6,16 @@ import { FolderPlus, Plus, Search } from "lucide-react";
 import { podbridgeApi } from "./api/bridge";
 import { AlbumsGrid } from "./components/AlbumsGrid";
 import { ArtistsView } from "./components/ArtistsView";
+import { DropOverlay } from "./components/DropOverlay";
 import { Sidebar } from "./components/Sidebar";
 import { SongsTable } from "./components/SongsTable";
+import { TransferDrawer } from "./components/TransferDrawer";
 import type {
   ActiveView,
   AppSettings,
   IpodDeviceSummary,
   LibrarySnapshot,
+  TransferProgressSnapshot,
 } from "./types";
 
 export function App() {
@@ -29,6 +32,9 @@ export function App() {
   const [activeView, setActiveView] = useState<ActiveView>({ kind: "songs" });
   const [searchQuery, setSearchQuery] = useState("");
   const [draggedTrackIds, setDraggedTrackIds] = useState<number[]>([]);
+  const [dropHoverPaths, setDropHoverPaths] = useState<string[] | null>(null);
+  const [transferProgress, setTransferProgress] =
+    useState<TransferProgressSnapshot | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busyEjecting, setBusyEjecting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +43,7 @@ export function App() {
     setToast(msg);
     window.setTimeout(() => {
       setToast((prev) => (prev === msg ? null : prev));
-    }, 3400);
+    }, 3600);
   }, []);
 
   const refreshAll = useCallback(async () => {
@@ -53,6 +59,41 @@ export function App() {
     }
   }, []);
 
+  const startTransferPaths = useCallback(
+    async (paths: string[]) => {
+      if (!snapshot || paths.length === 0) {
+        if (!snapshot) {
+          showToast("Connect an iPod or open Mock Mode before dropping files.");
+        }
+        return;
+      }
+      try {
+        const res = await podbridgeApi.enqueueTransfer(
+          snapshot.device.id,
+          paths,
+        );
+        await refreshAll();
+        showToast(
+          `Added ${res.added_tracks} song(s)${
+            res.skipped_duplicates > 0
+              ? ` · ${res.skipped_duplicates} duplicate(s) skipped`
+              : ""
+          }${
+            res.created_playlists > 0
+              ? ` · ${res.created_playlists} playlist(s) imported`
+              : ""
+          }`,
+        );
+      } catch (err) {
+        const msg = String(err);
+        if (!msg.toLowerCase().includes("cancelled")) {
+          showToast(`Transfer error: ${msg}`);
+        }
+      }
+    },
+    [snapshot, refreshAll, showToast],
+  );
+
   useEffect(() => {
     void (async () => {
       const loadedSettings = await podbridgeApi.getAppSettings();
@@ -63,16 +104,45 @@ export function App() {
   }, [refreshAll]);
 
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
+    let unlistenHotplug: (() => void) | undefined;
+    let unlistenProgress: (() => void) | undefined;
+
     void podbridgeApi.onDeviceHotplug(() => {
       void refreshAll();
     }).then((fn) => {
-      unlisten = fn;
+      unlistenHotplug = fn;
     });
+
+    void podbridgeApi.onTransferProgress((snap) => {
+      setTransferProgress(snap);
+    }).then((fn) => {
+      unlistenProgress = fn;
+    });
+
     return () => {
-      unlisten?.();
+      unlistenHotplug?.();
+      unlistenProgress?.();
     };
   }, [refreshAll]);
+
+  useEffect(() => {
+    let unlistenDrop: (() => void) | undefined;
+    void podbridgeApi
+      .onWindowDragDrop({
+        onHover: (paths) => setDropHoverPaths(paths),
+        onLeave: () => setDropHoverPaths(null),
+        onDrop: (paths) => {
+          setDropHoverPaths(null);
+          void startTransferPaths(paths);
+        },
+      })
+      .then((fn) => {
+        unlistenDrop = fn;
+      });
+    return () => {
+      unlistenDrop?.();
+    };
+  }, [startTransferPaths]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -158,11 +228,7 @@ export function App() {
     if (!snapshot) return;
     const picked = await podbridgeApi.pickAudioOrM3uFiles(true);
     if (picked.length > 0) {
-      const res = await podbridgeApi.enqueueTransfer(snapshot.device.id, picked);
-      await refreshAll();
-      showToast(
-        `Transferred ${res.added_tracks} track(s) (${res.skipped_duplicates} duplicate(s) skipped).`,
-      );
+      await startTransferPaths(picked);
     }
   };
 
@@ -172,9 +238,7 @@ export function App() {
       "Select Album or Music Folder",
     );
     if (folder) {
-      const res = await podbridgeApi.enqueueTransfer(snapshot.device.id, [folder]);
-      await refreshAll();
-      showToast(`Transferred ${res.added_tracks} track(s) from folder.`);
+      await startTransferPaths([folder]);
     }
   };
 
@@ -312,7 +376,22 @@ export function App() {
             />
           )}
         </section>
+
+        <TransferDrawer
+          progress={transferProgress}
+          onCancel={() => void podbridgeApi.cancelActiveTransfer()}
+          onDismiss={() => setTransferProgress(null)}
+        />
       </main>
+
+      <DropOverlay
+        visible={dropHoverPaths !== null}
+        hoveredPaths={dropHoverPaths ?? []}
+        deviceName={snapshot?.device.name ?? null}
+        losslessTargetLabel={
+          settings.transfer.lossless_target === "Alac" ? "ALAC" : "AAC"
+        }
+      />
 
       {toast && <div className="status-toast">{toast}</div>}
     </div>
