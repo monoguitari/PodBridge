@@ -7,3 +7,13 @@ repository.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+lofty.workspace = true
+podbridge-artwork.workspace = true
+podbridge-itdb.workspace = true
+rayon.workspace = true
+serde.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+walkdir.workspace = true
