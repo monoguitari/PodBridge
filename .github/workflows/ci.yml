@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-workspace:
+    name: Rust Format, Clippy & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Run unit & integration tests
+        run: cargo test --workspace
+      - name: Install cargo-xwin & LLVM for Windows check
+        run: |
+          sudo apt-get update && sudo apt-get install -y clang lld llvm
+          curl -sSL https://github.com/rust-cross/cargo-xwin/releases/download/v0.23.1/cargo-xwin-v0.23.1.x86_64-unknown-linux-musl.tar.gz \
+            | tar -xz -C "$HOME/.cargo/bin"
+      - name: Cross-check Windows MSVC target
+        run: cargo xwin check --workspace --target x86_64-pc-windows-msvc

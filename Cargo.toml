@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/podbridge-crypto",
+    "crates/podbridge-itdb",
+    "crates/podbridge-artwork",
+    "crates/podbridge-device",
+    "crates/podbridge-pipeline",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/monoguitari/PodBridge"
+
+[workspace.lints.rust]
+unexpected_cfgs = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"

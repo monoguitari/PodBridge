@@ -1,0 +1,28 @@
+# Rust / Cargo
+/target/
+**/*.rs.bk
+
+# Frontend
+/ui/node_modules/
+/ui/dist/
+/ui/.vite/
+
+# Tauri & Sidecar Binaries (fetched at package time, never committed)
+/src-tauri/target/
+/src-tauri/gen/
+/src-tauri/binaries/*.exe
+/src-tauri/binaries/ffmpeg*
+!/src-tauri/binaries/.gitkeep
+
+# Local Cross-Compilation & Test Caches
+/.xwin-cache/
+/.mock-ipod/
+/dist-packages/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+.env
+.env.*
