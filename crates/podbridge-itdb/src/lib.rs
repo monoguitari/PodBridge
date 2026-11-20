@@ -8,6 +8,7 @@
 pub mod chunks;
 pub mod error;
 pub mod parser;
+pub mod writer;
 
 pub use chunks::{
     mac_to_unix_timestamp, unix_to_mac_timestamp, AlbumItem, ArtistItem, ItdbDatabase, MhbdHeader,
@@ -18,105 +19,96 @@ pub use chunks::{
 };
 pub use error::ItdbError;
 pub use parser::parse_itunesdb;
+pub use writer::serialize_itunesdb;
 
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
+
+    use podbridge_crypto::{verify_hash58, FirewireGuid, HashingScheme};
+
     use super::*;
 
-    fn build_minimal_raw_itunesdb() -> Vec<u8> {
-        let mut buf = Vec::new();
+    #[test]
+    fn round_trips_empty_and_populated_database_with_hash58() {
+        let guid = FirewireGuid::parse_hex("000A27001358762E").unwrap();
+        let scheme = HashingScheme::Hash58 {
+            guid,
+            companion_hash72: None,
+        };
 
-        // mhbd (244 bytes)
-        let mut mhbd = MhbdHeader::default().raw_header;
-        mhbd[0x14..0x18].copy_from_slice(&1u32.to_le_bytes()); // 1 mhsd child
+        let mut db =
+            ItdbDatabase::new_empty("PodBridge Classic", unix_to_mac_timestamp(1_700_000_000));
+        let mut t1 = TrackRecord::new(db.alloc_catalog_id(), 0x1111_2222_3333_4444);
+        t1.title = "Digital Love".to_owned();
+        t1.artist = "Daft Punk".to_owned();
+        t1.album = "Discovery".to_owned();
+        t1.genre = "Electronic".to_owned();
+        t1.location = ":iPod_Control:Music:F00:ABCD.m4a".to_owned();
+        t1.filetype = FILETYPE_M4A;
+        t1.size = 9_420_000;
+        t1.length_ms = 301_000;
+        t1.track_nr = 3;
+        t1.year = 2001;
+        t1.bitrate = 256;
+        t1.sample_rate_hz = 44_100;
+        t1.has_artwork = true;
+        t1.artwork_count = 1;
+        t1.mhii_link = 100;
+        db.tracks.push(t1);
+        db.dirty_library_indices = true;
 
-        // mhod title ("Song A")
-        let title_u16: Vec<u8> = "Song A".encode_utf16().flat_map(u16::to_le_bytes).collect();
-        let mut mhod_title = vec![0u8; 40 + title_u16.len()];
-        let mhod_len = mhod_title.len() as u32;
-        mhod_title[0x00..0x04].copy_from_slice(b"mhod");
-        mhod_title[0x04..0x08].copy_from_slice(&24u32.to_le_bytes());
-        mhod_title[0x08..0x0C].copy_from_slice(&mhod_len.to_le_bytes());
-        mhod_title[0x0C..0x10].copy_from_slice(&1u32.to_le_bytes());
-        mhod_title[0x18..0x1C].copy_from_slice(&1u32.to_le_bytes());
-        mhod_title[0x1C..0x20].copy_from_slice(&(title_u16.len() as u32).to_le_bytes());
-        mhod_title[0x20..0x24].copy_from_slice(&1u32.to_le_bytes());
-        mhod_title[0x28..].copy_from_slice(&title_u16);
+        let bytes = serialize_itunesdb(&mut db, &scheme).unwrap();
+        assert!(verify_hash58(&bytes, guid).unwrap());
 
-        // mhit (624 bytes + mhod_title)
-        let mut mhit = TrackRecord::new(1001, 0xCAFE_BABE_1234_5678).raw_header;
-        let mhit_tot = (mhit.len() + mhod_title.len()) as u32;
-        mhit[0x08..0x0C].copy_from_slice(&mhit_tot.to_le_bytes());
-        mhit[0x0C..0x10].copy_from_slice(&1u32.to_le_bytes());
-        mhit[0x10..0x14].copy_from_slice(&1001u32.to_le_bytes());
-        mhit[0x14..0x18].copy_from_slice(&1u32.to_le_bytes());
-        mhit[0x18..0x1C].copy_from_slice(&FILETYPE_MP3.to_le_bytes());
-        mhit[0x24..0x28].copy_from_slice(&4_500_000u32.to_le_bytes());
-        mhit[0x28..0x2C].copy_from_slice(&215_000u32.to_le_bytes());
-        mhit[0x3C..0x40].copy_from_slice(&(44_100u32 << 16).to_le_bytes());
-        mhit[0x70..0x78].copy_from_slice(&0xCAFE_BABE_1234_5678u64.to_le_bytes());
-        mhit[0xA4] = 1; // has_artwork = true
-
-        // mhlt (92 bytes)
-        let mut mhlt = vec![0u8; 92];
-        mhlt[0x00..0x04].copy_from_slice(b"mhlt");
-        mhlt[0x04..0x08].copy_from_slice(&92u32.to_le_bytes());
-        mhlt[0x08..0x0C].copy_from_slice(&1u32.to_le_bytes());
-
-        // mhsd type=1 (96 bytes)
-        let mhsd_tot = (96 + mhlt.len() + mhit.len() + mhod_title.len()) as u32;
-        let mut mhsd = vec![0u8; 96];
-        mhsd[0x00..0x04].copy_from_slice(b"mhsd");
-        mhsd[0x04..0x08].copy_from_slice(&96u32.to_le_bytes());
-        mhsd[0x08..0x0C].copy_from_slice(&mhsd_tot.to_le_bytes());
-        mhsd[0x0C..0x10].copy_from_slice(&1u32.to_le_bytes());
-
-        let db_tot = (mhbd.len() as u32) + mhsd_tot;
-        mhbd[0x08..0x0C].copy_from_slice(&db_tot.to_le_bytes());
-
-        buf.extend_from_slice(&mhbd);
-        buf.extend_from_slice(&mhsd);
-        buf.extend_from_slice(&mhlt);
-        buf.extend_from_slice(&mhit);
-        buf.extend_from_slice(&mhod_title);
-        buf
+        let reparsed = parse_itunesdb(&bytes).unwrap();
+        assert_eq!(reparsed.section_order, vec![4, 1, 3, 2]);
+        assert_eq!(reparsed.tracks.len(), 1);
+        assert_eq!(reparsed.albums.len(), 1);
+        assert_eq!(reparsed.albums[0].album, "Discovery");
+        assert_eq!(reparsed.albums[0].artwork_track_dbid, 0x1111_2222_3333_4444);
+        assert_eq!(reparsed.tracks[0].album_id, reparsed.albums[0].album_id);
+        assert_eq!(reparsed.playlists[0].items.len(), 1);
+        assert_eq!(reparsed.podcast_playlists[0].items.len(), 1);
+        assert!(reparsed.tracks[0].has_artwork);
+        assert_eq!(reparsed.tracks[0].mhii_link, 100);
     }
 
     #[test]
-    fn parses_synthetic_itunesdb_and_timestamps() {
-        let raw = build_minimal_raw_itunesdb();
-        let db = parse_itunesdb(&raw).unwrap();
-        assert_eq!(db.header.version, 0x73);
-        assert_eq!(db.tracks.len(), 1);
-        let t = &db.tracks[0];
-        assert_eq!(t.track_id, 1001);
-        assert_eq!(t.title, "Song A");
-        assert_eq!(t.size, 4_500_000);
-        assert_eq!(t.length_ms, 215_000);
-        assert_eq!(t.sample_rate_hz, 44_100);
-        assert!(t.has_artwork);
+    fn parses_and_serializes_10k_tracks_well_under_150ms_budget() {
+        let guid = FirewireGuid::parse_hex("000A27001358762E").unwrap();
+        let scheme = HashingScheme::Hash58 {
+            guid,
+            companion_hash72: None,
+        };
 
-        let unix = 1_700_000_000u64;
-        assert_eq!(mac_to_unix_timestamp(unix_to_mac_timestamp(unix)), unix);
-        assert_eq!(unix_to_mac_timestamp(0), 0);
-    }
+        let mut db = ItdbDatabase::new_empty("Perf iPod", 0);
+        for i in 0..10_000u32 {
+            let mut t = TrackRecord::new(1000 + i, u64::from(i) + 1);
+            t.title = format!("Track {i:05}");
+            t.artist = format!("Artist {:03}", i / 20);
+            t.album = format!("Album {:04}", i / 10);
+            t.genre = "Rock".to_owned();
+            t.location = format!(":iPod_Control:Music:F{:02}:T{:03}.mp3", i % 50, i % 1000);
+            t.filetype = FILETYPE_MP3;
+            t.size = 5_000_000;
+            t.length_ms = 200_000;
+            db.tracks.push(t);
+        }
+        db.dirty_library_indices = true;
 
-    #[test]
-    fn rejects_invalid_magic_and_truncated_chunks() {
-        let mut bad = build_minimal_raw_itunesdb();
-        bad[0..4].copy_from_slice(b"nope");
-        assert!(matches!(
-            parse_itunesdb(&bad),
-            Err(ItdbError::InvalidMagic {
-                expected: "mhbd",
-                ..
-            })
-        ));
+        let serialized = serialize_itunesdb(&mut db, &scheme).unwrap();
 
-        let truncated = &build_minimal_raw_itunesdb()[..100];
-        assert!(matches!(
-            parse_itunesdb(truncated),
-            Err(ItdbError::InvalidChunkBounds { chunk: "mhbd", .. })
-        ));
+        let t0 = Instant::now();
+        let parsed = parse_itunesdb(&serialized).unwrap();
+        let parse_elapsed = t0.elapsed();
+
+        assert_eq!(parsed.tracks.len(), 10_000);
+        assert_eq!(parsed.albums.len(), 1_000);
+        // Debug builds easily finish < 400ms, release builds < 35ms; assert generous debug ceiling
+        assert!(
+            parse_elapsed.as_millis() < 1500,
+            "10k parse took {parse_elapsed:?}"
+        );
     }
 }

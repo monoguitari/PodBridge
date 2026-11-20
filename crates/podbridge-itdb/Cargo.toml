@@ -12,5 +12,6 @@ workspace = true
 byteorder.workspace = true
 encoding_rs.workspace = true
 podbridge-crypto.workspace = true
+rand.workspace = true
 serde.workspace = true
 thiserror.workspace = true
