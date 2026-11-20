@@ -7,6 +7,10 @@ import { podbridgeApi } from "./api/bridge";
 import { AlbumsGrid } from "./components/AlbumsGrid";
 import { ArtistsView } from "./components/ArtistsView";
 import { DropOverlay } from "./components/DropOverlay";
+import { MockDeviceModal } from "./components/MockDeviceModal";
+import { NewPlaylistModal } from "./components/NewPlaylistModal";
+import { PlaylistView } from "./components/PlaylistView";
+import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
 import { SongsTable } from "./components/SongsTable";
 import { TransferDrawer } from "./components/TransferDrawer";
@@ -14,6 +18,7 @@ import type {
   ActiveView,
   AppSettings,
   IpodDeviceSummary,
+  IpodGeneration,
   LibrarySnapshot,
   TransferProgressSnapshot,
 } from "./types";
@@ -35,6 +40,9 @@ export function App() {
   const [dropHoverPaths, setDropHoverPaths] = useState<string[] | null>(null);
   const [transferProgress, setTransferProgress] =
     useState<TransferProgressSnapshot | null>(null);
+  const [newPlaylistOpen, setNewPlaylistOpen] = useState(false);
+  const [mockModalOpen, setMockModalOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [busyEjecting, setBusyEjecting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -159,12 +167,16 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  const handleSaveSettings = async (next: AppSettings) => {
+    setSettings(next);
+    document.documentElement.setAttribute("data-theme", next.theme);
+    await podbridgeApi.updateAppSettings(next);
+    showToast("Preferences saved.");
+  };
+
   const handleToggleTheme = async () => {
     const nextTheme = settings.theme === "dark" ? "light" : "dark";
-    const updated: AppSettings = { ...settings, theme: nextTheme };
-    setSettings(updated);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-    await podbridgeApi.updateAppSettings(updated);
+    await handleSaveSettings({ ...settings, theme: nextTheme });
   };
 
   const handleSelectDevice = async (deviceId: string) => {
@@ -177,7 +189,7 @@ export function App() {
     setBusyEjecting(true);
     try {
       await podbridgeApi.safeEjectDevice(deviceId);
-      showToast("iPod safely ejected — safe to disconnect USB cable.");
+      showToast("Device safely closed / ejected.");
       await refreshAll();
     } catch (err) {
       showToast(`Eject failed: ${String(err)}`);
@@ -206,6 +218,61 @@ export function App() {
     [snapshot, showToast],
   );
 
+  const handleCreatePlaylist = async (name: string) => {
+    if (!snapshot) return;
+    try {
+      const nextSnap = await podbridgeApi.createPlaylist(
+        snapshot.device.id,
+        name,
+      );
+      setSnapshot(nextSnap);
+      const newest = nextSnap.playlists[nextSnap.playlists.length - 1];
+      if (newest) {
+        setActiveView({
+          kind: "playlist",
+          persistentIdHex: newest.persistent_id_hex,
+        });
+      }
+      showToast(`Created playlist "${name}".`);
+    } catch (err) {
+      showToast(`Playlist creation failed: ${String(err)}`);
+    }
+  };
+
+  const handleRenamePlaylist = async (
+    persistentIdHex: string,
+    newName: string,
+  ) => {
+    if (!snapshot) return;
+    try {
+      const nextSnap = await podbridgeApi.renamePlaylist(
+        snapshot.device.id,
+        persistentIdHex,
+        newName,
+      );
+      setSnapshot(nextSnap);
+    } catch (err) {
+      showToast(`Rename failed: ${String(err)}`);
+    }
+  };
+
+  const handleSetPlaylistTracks = async (
+    persistentIdHex: string,
+    trackIds: number[],
+  ) => {
+    if (!snapshot) return;
+    try {
+      const nextSnap = await podbridgeApi.setPlaylistTracks(
+        snapshot.device.id,
+        persistentIdHex,
+        trackIds,
+      );
+      setSnapshot(nextSnap);
+    } catch (err) {
+      showToast(`Playlist update failed: ${String(err)}`);
+    }
+  };
+
   const handleAppendToPlaylist = useCallback(
     async (persistentIdHex: string, trackIds: number[]) => {
       if (!snapshot || trackIds.length === 0) return;
@@ -223,6 +290,64 @@ export function App() {
     },
     [snapshot, showToast],
   );
+
+  const handleDeletePlaylist = async (persistentIdHex: string) => {
+    if (!snapshot) return;
+    try {
+      const nextSnap = await podbridgeApi.deletePlaylist(
+        snapshot.device.id,
+        persistentIdHex,
+      );
+      setSnapshot(nextSnap);
+      setActiveView({ kind: "songs" });
+      showToast("Playlist deleted.");
+    } catch (err) {
+      showToast(`Delete failed: ${String(err)}`);
+    }
+  };
+
+  const handleCreateMock = async (
+    path: string,
+    name: string,
+    gen: IpodGeneration,
+  ) => {
+    try {
+      const snap = await podbridgeApi.createMockDevice(path, name, gen);
+      setSnapshot(snap);
+      await refreshAll();
+      setActiveView({ kind: "songs" });
+      showToast(`Created Mock ${snap.device.generation_label}.`);
+    } catch (err) {
+      showToast(`Mock creation failed: ${String(err)}`);
+    }
+  };
+
+  const handleOpenMock = async (path: string) => {
+    try {
+      const snap = await podbridgeApi.openMockDevice(path);
+      setSnapshot(snap);
+      await refreshAll();
+      setActiveView({ kind: "songs" });
+      showToast(`Opened Mock ${snap.device.name}.`);
+    } catch (err) {
+      showToast(`Open Mock failed: ${String(err)}`);
+    }
+  };
+
+  const handleRestoreBackup = async (backupId: string) => {
+    if (!snapshot) return;
+    try {
+      const snap = await podbridgeApi.restoreBackup(
+        snapshot.device.id,
+        backupId,
+      );
+      setSnapshot(snap);
+      await refreshAll();
+      showToast("Database backup restored successfully.");
+    } catch (err) {
+      showToast(`Restore failed: ${String(err)}`);
+    }
+  };
 
   const handlePickFiles = async () => {
     if (!snapshot) return;
@@ -242,6 +367,13 @@ export function App() {
     }
   };
 
+  const activePlaylist =
+    activeView.kind === "playlist"
+      ? snapshot?.playlists.find(
+          (p) => p.persistent_id_hex === activeView.persistentIdHex,
+        )
+      : undefined;
+
   return (
     <div className="app-shell">
       <Sidebar
@@ -257,7 +389,7 @@ export function App() {
         onRefreshDevices={() => void refreshAll()}
         onEjectDevice={(id) => void handleEjectDevice(id)}
         onChangeView={setActiveView}
-        onCreatePlaylistPrompt={() => {}}
+        onCreatePlaylistPrompt={() => setNewPlaylistOpen(true)}
         onDropTracksOnPlaylist={(pid) => {
           if (draggedTrackIds.length > 0) {
             void handleAppendToPlaylist(pid, draggedTrackIds);
@@ -265,9 +397,9 @@ export function App() {
           }
         }}
         hasDraggedSelection={draggedTrackIds.length > 0}
-        onOpenMockModal={() => {}}
+        onOpenMockModal={() => setMockModalOpen(true)}
         onToggleTheme={() => void handleToggleTheme()}
-        onOpenSettings={() => {}}
+        onOpenSettings={() => setSettingsModalOpen(true)}
       />
 
       <main className="main-pane">
@@ -358,23 +490,21 @@ export function App() {
               }
               onDragSelectionChange={setDraggedTrackIds}
             />
-          ) : (
-            <SongsTable
+          ) : activePlaylist ? (
+            <PlaylistView
               deviceId={snapshot.device.id}
-              tracks={snapshot.tracks.filter((t) =>
-                snapshot.playlists
-                  .find((p) => p.persistent_id_hex === activeView.persistentIdHex)
-                  ?.track_ids.includes(t.track_id),
-              )}
-              playlists={snapshot.playlists}
+              playlist={activePlaylist}
+              allTracks={snapshot.tracks}
               searchQuery={searchQuery}
-              onDeleteTracks={(ids) => void handleDeleteTracks(ids)}
-              onAppendToPlaylist={(pid, ids) =>
-                void handleAppendToPlaylist(pid, ids)
+              onRenamePlaylist={(pid, name) =>
+                void handleRenamePlaylist(pid, name)
               }
-              onDragSelectionChange={setDraggedTrackIds}
+              onReorderOrUpdateTracks={(pid, ids) =>
+                void handleSetPlaylistTracks(pid, ids)
+              }
+              onDeletePlaylist={(pid) => void handleDeletePlaylist(pid)}
             />
-          )}
+          ) : null}
         </section>
 
         <TransferDrawer
@@ -391,6 +521,28 @@ export function App() {
         losslessTargetLabel={
           settings.transfer.lossless_target === "Alac" ? "ALAC" : "AAC"
         }
+      />
+
+      <NewPlaylistModal
+        open={newPlaylistOpen}
+        onClose={() => setNewPlaylistOpen(false)}
+        onCreate={(name) => void handleCreatePlaylist(name)}
+      />
+
+      <MockDeviceModal
+        open={mockModalOpen}
+        onClose={() => setMockModalOpen(false)}
+        onCreateMock={(p, n, g) => void handleCreateMock(p, n, g)}
+        onOpenExistingMock={(p) => void handleOpenMock(p)}
+      />
+
+      <SettingsModal
+        open={settingsModalOpen}
+        settings={settings}
+        activeDeviceId={snapshot?.device.id ?? null}
+        onClose={() => setSettingsModalOpen(false)}
+        onSaveSettings={(s) => void handleSaveSettings(s)}
+        onRestoreBackup={(id) => void handleRestoreBackup(id)}
       />
 
       {toast && <div className="status-toast">{toast}</div>}
