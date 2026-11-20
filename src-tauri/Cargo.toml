@@ -1,0 +1,28 @@
+[package]
+name = "podbridge"
+version = "0.1.0"
+description = "Low-latency Windows music, artwork, and playlist manager for stock-firmware iPod Classic & Nano"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/monoguitari/PodBridge"
+
+[lib]
+name = "podbridge_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+podbridge-artwork = { path = "../crates/podbridge-artwork" }
+podbridge-crypto = { path = "../crates/podbridge-crypto" }
+podbridge-device = { path = "../crates/podbridge-device" }
+podbridge-itdb = { path = "../crates/podbridge-itdb" }
+podbridge-pipeline = { path = "../crates/podbridge-pipeline" }
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tokio = { version = "1.42", features = ["rt-multi-thread", "sync", "time"] }
+tokio-util = "0.7"
