@@ -7,3 +7,15 @@ repository.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+plist.workspace = true
+podbridge-artwork.workspace = true
+podbridge-crypto.workspace = true
+podbridge-itdb.workspace = true
+rand.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows.workspace = true
