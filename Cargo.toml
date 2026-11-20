@@ -15,8 +15,13 @@ license = "Apache-2.0"
 repository = "https://github.com/monoguitari/PodBridge"
 
 [workspace.dependencies]
+podbridge-crypto = { path = "crates/podbridge-crypto" }
+
 aes = "0.8"
+byteorder = "1.5"
+encoding_rs = "0.8"
 hmac = "0.12"
+serde = { version = "1.0", features = ["derive"] }
 sha1 = "0.10"
 thiserror = "2.0"
 

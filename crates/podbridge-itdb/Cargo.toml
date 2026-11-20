@@ -7,3 +7,10 @@ repository.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+byteorder.workspace = true
+encoding_rs.workspace = true
+podbridge-crypto.workspace = true
+serde.workspace = true
+thiserror.workspace = true
