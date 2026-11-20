@@ -4,7 +4,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FolderPlus, Plus, Search } from "lucide-react";
 import { podbridgeApi } from "./api/bridge";
+import { AlbumsGrid } from "./components/AlbumsGrid";
+import { ArtistsView } from "./components/ArtistsView";
 import { Sidebar } from "./components/Sidebar";
+import { SongsTable } from "./components/SongsTable";
 import type {
   ActiveView,
   AppSettings,
@@ -25,6 +28,7 @@ export function App() {
   });
   const [activeView, setActiveView] = useState<ActiveView>({ kind: "songs" });
   const [searchQuery, setSearchQuery] = useState("");
+  const [draggedTrackIds, setDraggedTrackIds] = useState<number[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [busyEjecting, setBusyEjecting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -112,6 +116,44 @@ export function App() {
     }
   };
 
+  const handleDeleteTracks = useCallback(
+    async (trackIds: number[]) => {
+      if (!snapshot || trackIds.length === 0) return;
+      try {
+        const nextSnap = await podbridgeApi.deleteTracks(
+          snapshot.device.id,
+          trackIds,
+        );
+        setSnapshot(nextSnap);
+        setDevices((prev) =>
+          prev.map((d) => (d.id === nextSnap.device.id ? nextSnap.device : d)),
+        );
+        showToast(`Deleted ${trackIds.length} track(s) from iPod.`);
+      } catch (err) {
+        showToast(`Delete failed: ${String(err)}`);
+      }
+    },
+    [snapshot, showToast],
+  );
+
+  const handleAppendToPlaylist = useCallback(
+    async (persistentIdHex: string, trackIds: number[]) => {
+      if (!snapshot || trackIds.length === 0) return;
+      try {
+        const nextSnap = await podbridgeApi.appendToPlaylist(
+          snapshot.device.id,
+          persistentIdHex,
+          trackIds,
+        );
+        setSnapshot(nextSnap);
+        showToast(`Added ${trackIds.length} song(s) to playlist.`);
+      } catch (err) {
+        showToast(`Playlist update failed: ${String(err)}`);
+      }
+    },
+    [snapshot, showToast],
+  );
+
   const handlePickFiles = async () => {
     if (!snapshot) return;
     const picked = await podbridgeApi.pickAudioOrM3uFiles(true);
@@ -126,7 +168,9 @@ export function App() {
 
   const handlePickFolder = async () => {
     if (!snapshot) return;
-    const folder = await podbridgeApi.pickFolderDialog("Select Album or Music Folder");
+    const folder = await podbridgeApi.pickFolderDialog(
+      "Select Album or Music Folder",
+    );
     if (folder) {
       const res = await podbridgeApi.enqueueTransfer(snapshot.device.id, [folder]);
       await refreshAll();
@@ -150,8 +194,13 @@ export function App() {
         onEjectDevice={(id) => void handleEjectDevice(id)}
         onChangeView={setActiveView}
         onCreatePlaylistPrompt={() => {}}
-        onDropTracksOnPlaylist={() => {}}
-        hasDraggedSelection={false}
+        onDropTracksOnPlaylist={(pid) => {
+          if (draggedTrackIds.length > 0) {
+            void handleAppendToPlaylist(pid, draggedTrackIds);
+            setDraggedTrackIds([]);
+          }
+        }}
+        hasDraggedSelection={draggedTrackIds.length > 0}
         onOpenMockModal={() => {}}
         onToggleTheme={() => void handleToggleTheme()}
         onOpenSettings={() => {}}
@@ -193,16 +242,74 @@ export function App() {
           </div>
         </header>
 
-        <section className="content-viewport" style={{ padding: 24 }}>
-          {snapshot ? (
-            <div style={{ color: "var(--text-secondary)" }}>
-              Connected to <strong>{snapshot.device.name}</strong> (
-              {snapshot.tracks.length} tracks loaded).
+        <section className="content-viewport">
+          {!snapshot ? (
+            <div className="empty-state">
+              Connect an iPod Classic or Nano over USB, or open a local Mock iPod
+              folder from the sidebar.
             </div>
+          ) : activeView.kind === "songs" ? (
+            <SongsTable
+              deviceId={snapshot.device.id}
+              tracks={snapshot.tracks}
+              playlists={snapshot.playlists}
+              searchQuery={searchQuery}
+              onDeleteTracks={(ids) => void handleDeleteTracks(ids)}
+              onAppendToPlaylist={(pid, ids) =>
+                void handleAppendToPlaylist(pid, ids)
+              }
+              onDragSelectionChange={setDraggedTrackIds}
+            />
+          ) : activeView.kind === "albums" ? (
+            <AlbumsGrid
+              deviceId={snapshot.device.id}
+              albums={snapshot.albums}
+              tracks={snapshot.tracks}
+              playlists={snapshot.playlists}
+              searchQuery={searchQuery}
+              selectedAlbumKey={activeView.selectedAlbumKey}
+              onSelectAlbum={(key) =>
+                setActiveView({ kind: "albums", selectedAlbumKey: key })
+              }
+              onDeleteTracks={(ids) => void handleDeleteTracks(ids)}
+              onAppendToPlaylist={(pid, ids) =>
+                void handleAppendToPlaylist(pid, ids)
+              }
+              onDragSelectionChange={setDraggedTrackIds}
+            />
+          ) : activeView.kind === "artists" ? (
+            <ArtistsView
+              deviceId={snapshot.device.id}
+              artists={snapshot.artists}
+              tracks={snapshot.tracks}
+              playlists={snapshot.playlists}
+              searchQuery={searchQuery}
+              selectedArtist={activeView.selectedArtist}
+              onSelectArtist={(name) =>
+                setActiveView({ kind: "artists", selectedArtist: name })
+              }
+              onDeleteTracks={(ids) => void handleDeleteTracks(ids)}
+              onAppendToPlaylist={(pid, ids) =>
+                void handleAppendToPlaylist(pid, ids)
+              }
+              onDragSelectionChange={setDraggedTrackIds}
+            />
           ) : (
-            <div style={{ color: "var(--text-muted)" }}>
-              Connect an iPod or open Mock Mode from the sidebar.
-            </div>
+            <SongsTable
+              deviceId={snapshot.device.id}
+              tracks={snapshot.tracks.filter((t) =>
+                snapshot.playlists
+                  .find((p) => p.persistent_id_hex === activeView.persistentIdHex)
+                  ?.track_ids.includes(t.track_id),
+              )}
+              playlists={snapshot.playlists}
+              searchQuery={searchQuery}
+              onDeleteTracks={(ids) => void handleDeleteTracks(ids)}
+              onAppendToPlaylist={(pid, ids) =>
+                void handleAppendToPlaylist(pid, ids)
+              }
+              onDragSelectionChange={setDraggedTrackIds}
+            />
           )}
         </section>
       </main>
