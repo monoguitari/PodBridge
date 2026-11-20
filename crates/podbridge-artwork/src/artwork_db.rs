@@ -313,6 +313,15 @@ impl ArtworkDatabase {
         (mhii_id, writes)
     }
 
+    /// Increments `ref_count` and returns `Some(mhii_id)` if `sha256` was already registered in
+    /// this session.
+    pub fn increment_ref_by_sha256(&mut self, sha256: &[u8; 32]) -> Option<u32> {
+        let id = *self.sha256_to_id.get(sha256)?;
+        let item = self.images.iter_mut().find(|im| im.id == id)?;
+        item.ref_count = item.ref_count.saturating_add(1);
+        Some(id)
+    }
+
     /// Decrements `ref_count` for `mhii_id` when a referencing track is deleted, removing the
     /// `ArtworkItem` (and freeing its `.ithmb` slots for reuse) when `ref_count` reaches `0`.
     pub fn release_artwork_ref(&mut self, mhii_id: u32) {

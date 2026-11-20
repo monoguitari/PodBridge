@@ -17,6 +17,7 @@ repository = "https://github.com/monoguitari/PodBridge"
 [workspace.dependencies]
 podbridge-artwork = { path = "crates/podbridge-artwork" }
 podbridge-crypto = { path = "crates/podbridge-crypto" }
+podbridge-device = { path = "crates/podbridge-device" }
 podbridge-itdb = { path = "crates/podbridge-itdb" }
 
 aes = "0.8"
@@ -29,6 +30,7 @@ plist = "1.7"
 rand = "0.8"
 rayon = "1.10"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 sha1 = "0.10"
 sha2 = "0.10"
 tempfile = "3.14"

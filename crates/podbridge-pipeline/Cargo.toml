@@ -11,12 +11,19 @@ workspace = true
 [dependencies]
 lofty.workspace = true
 podbridge-artwork.workspace = true
+podbridge-device.workspace = true
 podbridge-itdb.workspace = true
+rand.workspace = true
 rayon.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 walkdir.workspace = true
+
+[dev-dependencies]
+image.workspace = true
+podbridge-crypto.workspace = true
